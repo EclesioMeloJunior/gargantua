@@ -11,6 +11,7 @@ import (
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p-core/peerstore"
 	"github.com/libp2p/go-libp2p-core/protocol"
 	discovery "github.com/libp2p/go-libp2p-discovery"
 	kaddht "github.com/libp2p/go-libp2p-kad-dht"
@@ -28,6 +29,7 @@ const (
 
 type (
 	Node struct {
+		ds   *badger.Datastore
 		pid  protocol.ID
 		ctx  context.Context
 		Host host.Host
@@ -42,33 +44,56 @@ func (n *Node) Close() error {
 	return n.Host.Close()
 }
 
-func (n *Node) setupBootstrapPeers() {
-	for _, addr := range kaddht.DefaultBootstrapPeers {
-		peerinfo, err := peer.AddrInfoFromP2pAddr(addr)
-		if err != nil {
-			log.Println("error to get the addr infor from peer", addr)
+func (n *Node) setupBootnodes() {
+	for _, peerinfo := range n.bootnodes {
+		n.Host.Peerstore().AddAddrs(peerinfo.ID, peerinfo.Addrs, peerstore.PermanentAddrTTL)
+
+		ttlctx, cancel := context.WithTimeout(n.ctx, time.Second*2)
+		defer cancel()
+
+		if err := n.Host.Connect(ttlctx, peerinfo); err != nil {
+			log.Println("could not connect bootnode", peerinfo.ID)
 			continue
 		}
 
-		if err := n.Host.Connect(n.ctx, *peerinfo); err != nil {
-			log.Println("could not connect to peer", peerinfo.Addrs)
-			continue
+		log.Println("connected to bootnode", peerinfo.ID)
+	}
+}
+
+func (n *Node) waitPeersToDHT() {
+	if len(n.bootnodes) == 0 {
+		peers := n.Host.Network().Peers()
+
+		for {
+			if len(peers) > 0 {
+				break
+			}
+
+			select {
+			case <-time.After(time.Second * 10):
+				log.Println("no peers yet, waiting peers to start dht")
+			case <-n.ctx.Done():
+				return
+			}
+
+			peers = n.Host.Network().Peers()
 		}
 
-		n.bootnodes = append(n.bootnodes, n.Host.Peerstore().PeerInfo(peerinfo.ID))
-		log.Println("connected to bootstrap peer", addr)
+		for _, p := range peers {
+			n.bootnodes = append(n.bootnodes, n.Host.Peerstore().PeerInfo(p))
+		}
 	}
 }
 
 func (n *Node) discoveryAndAdvertise() error {
 	routingDiscovery := discovery.NewRoutingDiscovery(n.dht)
+
 	err := n.dht.Bootstrap(n.ctx)
 	if err != nil {
 		return err
 	}
-	time.Sleep(time.Second)
 
-	log.Println("current peers:", len(n.Host.Network().Peers()))
+	time.Sleep(time.Second)
 
 	go func() {
 		ttl := initialTTLAdvertisementTimeout
@@ -116,6 +141,7 @@ func (n *Node) discoveryAndAdvertise() error {
 				err := n.Host.Connect(n.ctx, peerinfo)
 				if err != nil {
 					log.Println("could not be able to connect to peer:", peerinfo.ID)
+					continue
 				}
 
 				log.Println("connected to", peerinfo.Addrs)
@@ -142,7 +168,33 @@ func (n *Node) MultiAddrs() (maddrs []ma.Multiaddr) {
 	return maddrs
 }
 
+func (n *Node) StartDiscovery() error {
+	n.setupBootnodes()
+	n.waitPeersToDHT()
+
+	dhtopts := []dual.Option{
+		dual.DHTOption(kaddht.Datastore(n.ds)),
+		dual.DHTOption(kaddht.BootstrapPeers(n.bootnodes...)),
+		dual.DHTOption(kaddht.V1ProtocolOverride(n.pid + "/kad")),
+		dual.DHTOption(kaddht.Mode(kaddht.ModeAutoServer)),
+	}
+
+	dht, err := dual.New(n.ctx, n.Host, dhtopts...)
+	if err != nil {
+		return err
+	}
+
+	n.dht = dht
+	return n.discoveryAndAdvertise()
+}
+
 func NewP2PNode(ctx context.Context, pid protocol.ID, basepath, port string, bootnodes []string) (*Node, error) {
+	var err error
+
+	if err != nil {
+		return nil, err
+	}
+
 	opts, err := buildP2Popts(port, ctx)
 	if err != nil {
 		return nil, err
@@ -158,27 +210,17 @@ func NewP2PNode(ctx context.Context, pid protocol.ID, basepath, port string, boo
 		return nil, err
 	}
 
-	n := &Node{
-		ctx:  ctx,
-		Host: host,
-	}
-
-	n.setupBootstrapPeers()
-	dhtopts := []dual.Option{
-		dual.DHTOption(kaddht.Datastore(ds)),
-		dual.DHTOption(kaddht.V1ProtocolOverride(pid + "/kad")),
-		dual.DHTOption(kaddht.Mode(kaddht.ModeAutoServer)),
-		dual.DHTOption(kaddht.BootstrapPeers(n.bootnodes...)),
-	}
-
-	dht, err := dual.New(ctx, host, dhtopts...)
+	bootnodesInfos, err := stringsToAddrInfo(bootnodes)
 	if err != nil {
-		return nil, err
+		log.Println("could not parse bootnode strings to addr")
 	}
 
-	n.dht = dht
-	if err := n.discoveryAndAdvertise(); err != nil {
-		return nil, err
+	n := &Node{
+		ds:        ds,
+		pid:       pid,
+		ctx:       ctx,
+		Host:      host,
+		bootnodes: bootnodesInfos,
 	}
 
 	return n, nil

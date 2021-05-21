@@ -57,10 +57,16 @@ func main() {
 
 	log.Println("node started", n.Host.ID())
 	log.Println("Addresses", n.MultiAddrs())
+
+	if err := n.StartDiscovery(); err != nil {
+		log.Println("failed start discovery", err)
+		return
+	}
+
 	log.Println("protocols", n.Host.Mux().Protocols())
 
 	ch := make(chan os.Signal, 1)
-	signal.Notify(ch, syscall.SIGINT, syscall.SIGTERM)
+	signal.Notify(ch, syscall.SIGINT, syscall.SIGTERM, syscall.SIGKILL)
 
 	<-ch
 	log.Println("shutting down...")
