@@ -10,8 +10,9 @@ import (
 	badger "github.com/ipfs/go-ds-badger2"
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p-core/host"
+	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
-	"github.com/libp2p/go-libp2p-core/peerstore"
+	peerstore "github.com/libp2p/go-libp2p-core/peerstore"
 	"github.com/libp2p/go-libp2p-core/protocol"
 	discovery "github.com/libp2p/go-libp2p-discovery"
 	kaddht "github.com/libp2p/go-libp2p-kad-dht"
@@ -44,7 +45,8 @@ func (n *Node) Close() error {
 	return n.Host.Close()
 }
 
-func (n *Node) setupBootnodes() {
+// setupBootNodes will connect to bootnodes
+func (n *Node) setupBootNodes() error {
 	for _, peerinfo := range n.bootnodes {
 		n.Host.Peerstore().AddAddrs(peerinfo.ID, peerinfo.Addrs, peerstore.PermanentAddrTTL)
 
@@ -58,93 +60,49 @@ func (n *Node) setupBootnodes() {
 
 		log.Println("connected to bootnode", peerinfo.ID)
 	}
-}
 
-func (n *Node) waitPeersToDHT() {
-	if len(n.bootnodes) == 0 {
-		peers := n.Host.Network().Peers()
-
-		for {
-			if len(peers) > 0 {
-				break
-			}
-
-			select {
-			case <-time.After(time.Second * 10):
-				log.Println("no peers yet, waiting peers to start dht")
-			case <-n.ctx.Done():
-				return
-			}
-
-			peers = n.Host.Network().Peers()
-		}
-
-		for _, p := range peers {
-			n.bootnodes = append(n.bootnodes, n.Host.Peerstore().PeerInfo(p))
-		}
-	}
+	return nil
 }
 
 func (n *Node) discoveryAndAdvertise() error {
-	routingDiscovery := discovery.NewRoutingDiscovery(n.dht)
-
-	err := n.dht.Bootstrap(n.ctx)
-	if err != nil {
+	if err := n.dht.Bootstrap(n.ctx); err != nil {
 		return err
 	}
 
-	time.Sleep(time.Second)
+	routingDiscovery := discovery.NewRoutingDiscovery(n.dht)
+	discovery.Advertise(n.ctx, routingDiscovery, string(n.pid))
 
-	go func() {
-		ttl := initialTTLAdvertisementTimeout
-		for {
-			select {
-			case <-time.After(ttl):
-				log.Println("advertising ourselves in the DHT...")
-				err := n.dht.Bootstrap(n.ctx)
-				if err != nil {
-					log.Println("failed to bootstrap DHT")
-					continue
-				}
-
-				ttl, err = routingDiscovery.Advertise(n.ctx, string(n.pid))
-				if err != nil {
-					log.Println("fail to advertise in the DHT", err)
-					ttl = tryAdvertiseTimeout
-				}
-			case <-n.ctx.Done():
-				return
-			}
-		}
-	}()
+	ticker := time.NewTicker(findPeersTimeout)
 
 	go func() {
 		log.Println("finding peers...")
-		peerC, err := routingDiscovery.FindPeers(n.ctx, string(n.pid))
-		if err != nil {
-			log.Println("could not initialize to find peers", err)
-			return
-		}
-
 		for {
 			select {
 			case <-n.ctx.Done():
 				return
-			case <-time.After(findPeersTimeout):
-				log.Println("check current peers amount...")
-			case peerinfo := <-peerC:
-				if peerinfo.ID == n.Host.ID() || peerinfo.ID == "" {
-					continue
-				}
-				log.Println("found peer:", peerinfo.ID)
-
-				err := n.Host.Connect(n.ctx, peerinfo)
+			case <-ticker.C:
+				peers, err := discovery.FindPeers(n.ctx, routingDiscovery, string(n.pid))
 				if err != nil {
-					log.Println("could not be able to connect to peer:", peerinfo.ID)
-					continue
+					return
 				}
 
-				log.Println("connected to", peerinfo.Addrs)
+				for _, peerinfo := range peers {
+					if peerinfo.ID == n.Host.ID() || peerinfo.ID == "" {
+						continue
+					}
+
+					log.Println("found peer:", peerinfo.ID)
+
+					if n.Host.Network().Connectedness(peerinfo.ID) != network.Connected {
+						err := n.Host.Connect(n.ctx, peerinfo)
+						if err != nil {
+							log.Println("could not be able to connect to peer:", peerinfo.ID)
+						} else {
+							log.Println("connected to", peerinfo.Addrs)
+							log.Println("connected peers", n.Host.Network().Peers())
+						}
+					}
+				}
 			}
 		}
 	}()
@@ -169,9 +127,30 @@ func (n *Node) MultiAddrs() (maddrs []ma.Multiaddr) {
 }
 
 func (n *Node) StartDiscovery() error {
-	n.setupBootnodes()
-	n.waitPeersToDHT()
+	if len(n.bootnodes) < 1 {
+		peers := n.Host.Network().Peers()
 
+		for {
+			if len(peers) > 0 {
+				break
+			}
+
+			select {
+			case <-time.After(time.Second * 5):
+				log.Println("no peers yet, waiting connections...")
+			case <-n.ctx.Done():
+				return nil
+			}
+
+			peers = n.Host.Network().Peers()
+		}
+
+		for _, p := range peers {
+			n.bootnodes = append(n.bootnodes, n.Host.Peerstore().PeerInfo(p))
+		}
+	}
+
+	log.Println("starting DHT ...", n.bootnodes)
 	dhtopts := []dual.Option{
 		dual.DHTOption(kaddht.Datastore(n.ds)),
 		dual.DHTOption(kaddht.BootstrapPeers(n.bootnodes...)),
@@ -189,10 +168,9 @@ func (n *Node) StartDiscovery() error {
 }
 
 func NewP2PNode(ctx context.Context, pid protocol.ID, basepath, port string, bootnodes []string) (*Node, error) {
-	var err error
-
+	bootnodesInfos, err := stringsToAddrInfo(bootnodes)
 	if err != nil {
-		return nil, err
+		log.Println("could not parse bootnode strings to addr")
 	}
 
 	opts, err := buildP2Popts(port, ctx)
@@ -210,17 +188,16 @@ func NewP2PNode(ctx context.Context, pid protocol.ID, basepath, port string, boo
 		return nil, err
 	}
 
-	bootnodesInfos, err := stringsToAddrInfo(bootnodes)
-	if err != nil {
-		log.Println("could not parse bootnode strings to addr")
-	}
-
 	n := &Node{
 		ds:        ds,
 		pid:       pid,
 		ctx:       ctx,
 		Host:      host,
 		bootnodes: bootnodesInfos,
+	}
+
+	if err := n.setupBootNodes(); err != nil {
+		return nil, err
 	}
 
 	return n, nil

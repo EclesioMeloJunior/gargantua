@@ -14,6 +14,7 @@ import (
 )
 
 const defaultBasepath = "~/.gargantua"
+const defaultPID = protocol.ID("/gargantua/dev/v0")
 
 var (
 	port     string
@@ -49,7 +50,7 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	n, err := p2p.NewP2PNode(ctx, protocol.ID("/gargantua/dev/v0"), expandedDir, port, bootnodes)
+	n, err := p2p.NewP2PNode(ctx, defaultPID, expandedDir, port, bootnodes)
 	if err != nil {
 		log.Printf("could not start node: %v\n", err)
 		return
@@ -65,8 +66,14 @@ func main() {
 
 	log.Println("protocols", n.Host.Mux().Protocols())
 
+	rpcservice := p2p.NewRPC(n.Host, defaultPID)
+	if err = rpcservice.Setup(); err != nil {
+		log.Println("failed to setup rpc", err)
+		return
+	}
+
 	ch := make(chan os.Signal, 1)
-	signal.Notify(ch, syscall.SIGINT, syscall.SIGTERM, syscall.SIGKILL)
+	signal.Notify(ch, syscall.SIGINT, syscall.SIGTERM)
 
 	<-ch
 	log.Println("shutting down...")
