@@ -13,25 +13,19 @@ import (
 	"github.com/libp2p/go-libp2p-core/protocol"
 )
 
-const defaultBasepath = "~/.gargantua"
-const defaultPID = protocol.ID("/gargantua/dev/v0")
-
-var (
-	port     string
-	basepath string
-	bootnode string
-)
-
-func init() {
-	flag.StringVar(&port, "port", "9002", "setup the port to listen to")
-	flag.StringVar(&basepath, "basepath", defaultBasepath, "the directory to stores node related files")
-	flag.StringVar(&bootnode, "bootnode", "", "setup a bootnode as a peer")
-}
+const defaultConfigPath = "./config.dev.json"
 
 func main() {
+	configpath := flag.String("config", defaultConfigPath, "path to config json file")
 	flag.Parse()
 
-	expandedDir, err := config.ExpandDir(basepath)
+	nodeconfig, err := config.FromJson(*configpath)
+	if err != nil {
+		log.Println("problem to load config", err)
+		return
+	}
+
+	expandedDir, err := config.ExpandDir(nodeconfig.Node.Basepath)
 	if err != nil {
 		log.Println(err)
 		return
@@ -42,15 +36,10 @@ func main() {
 		return
 	}
 
-	bootnodes := []string{}
-	if bootnode != "" {
-		bootnodes = append(bootnodes, bootnode)
-	}
-
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	n, err := p2p.NewP2PNode(ctx, defaultPID, expandedDir, port, bootnodes)
+	n, err := p2p.NewP2PNode(ctx, protocol.ID(nodeconfig.Node.Protocol), expandedDir, nodeconfig.Network.Port, nodeconfig.Network.Bootnodes)
 	if err != nil {
 		log.Printf("could not start node: %v\n", err)
 		return
@@ -66,7 +55,7 @@ func main() {
 
 	log.Println("protocols", n.Host.Mux().Protocols())
 
-	rpcservice := p2p.NewRPC(n.Host, defaultPID)
+	rpcservice := p2p.NewRPC(n.Host, protocol.ID(nodeconfig.Node.Protocol))
 	if err = rpcservice.Setup(); err != nil {
 		log.Println("failed to setup rpc", err)
 		return

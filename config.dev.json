@@ -1,3 +1,13 @@
 {
-    "protocolID": "/gargantua/dev/v0"
+    "node": {
+        "protocolID": "/gargantua/dev/v0",
+        "basepath": "~/.gargantua"
+    },
+
+    "network": {
+        "port": "9001",
+        "bootnodes": [
+            ""
+        ]
+    }    
 }
