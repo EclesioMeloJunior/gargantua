@@ -1,5 +1,8 @@
 package encoding
 
+import "errors"
+
+// EncodeUint64LEB128 compress a unsigned interger in a small number of bytes
 func EncodeUint64LEB128(v uint64) []byte {
 	b := []byte{}
 
@@ -22,4 +25,21 @@ func EncodeUint64LEB128(v uint64) []byte {
 	}
 
 	return b
+}
+
+func DecodeUint64LEB128(b []byte) (uint64, error) {
+	l := uint8(len(b) & 0xff)
+	if l > 10 {
+		return 0, errors.New("the max leb128 encoded bytes len is 10")
+	}
+
+	var result uint64
+	for i := uint8(0); i < l; i++ {
+		result |= uint64(b[i]&0x7f) << (7 * i)
+		if b[i]&0x80 == 0 {
+			break
+		}
+	}
+
+	return result, nil
 }
