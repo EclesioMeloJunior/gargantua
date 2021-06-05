@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"flag"
 	"log"
 	"os"
 	"os/signal"
@@ -11,29 +10,43 @@ import (
 	"github.com/EclesioMeloJunior/gargantua/config"
 	"github.com/EclesioMeloJunior/gargantua/p2p"
 	"github.com/libp2p/go-libp2p-core/protocol"
+	"github.com/urfave/cli/v2"
 )
 
 const defaultConfigPath = "./config.dev.json"
 
-func main() {
-	configpath := flag.String("config", defaultConfigPath, "path to config json file")
-	flag.Parse()
+var NodeCmd = &cli.Command{
+	Name:  "node",
+	Usage: "setup a gargantua node",
+	Subcommands: []*cli.Command{
+		{
+			Name:   "initialize",
+			Usage:  "start a non-validator node by default",
+			Action: initialize,
+			Flags: []cli.Flag{
+				&cli.StringFlag{
+					Name:    "config",
+					Aliases: []string{"c"},
+					Value:   defaultConfigPath,
+				},
+			},
+		},
+	},
+}
 
-	nodeconfig, err := config.FromJson(*configpath)
+func initialize(c *cli.Context) error {
+	nodeconfig, err := config.FromJson(c.String("config"))
 	if err != nil {
-		log.Println("problem to load config", err)
-		return
+		return err
 	}
 
 	expandedDir, err := config.ExpandDir(nodeconfig.Node.Basepath)
 	if err != nil {
-		log.Println(err)
-		return
+		return err
 	}
 
 	if err := config.SetupBasepath(expandedDir); err != nil {
-		log.Println(err)
-		return
+		return err
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -41,24 +54,21 @@ func main() {
 
 	n, err := p2p.NewP2PNode(ctx, protocol.ID(nodeconfig.Node.Protocol), expandedDir, nodeconfig.Network.Port, nodeconfig.Network.Bootnodes)
 	if err != nil {
-		log.Printf("could not start node: %v\n", err)
-		return
+		return err
 	}
 
 	log.Println("node started", n.Host.ID())
 	log.Println("Addresses", n.MultiAddrs())
 
 	if err := n.StartDiscovery(); err != nil {
-		log.Println("failed start discovery", err)
-		return
+		return err
 	}
 
 	log.Println("protocols", n.Host.Mux().Protocols())
 
 	rpcservice := p2p.NewRPC(n.Host, protocol.ID(nodeconfig.Node.Protocol))
 	if err = rpcservice.Setup(); err != nil {
-		log.Println("failed to setup rpc", err)
-		return
+		return err
 	}
 
 	ch := make(chan os.Signal, 1)
@@ -66,4 +76,6 @@ func main() {
 
 	<-ch
 	log.Println("shutting down...")
+
+	return nil
 }
