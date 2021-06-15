@@ -13,8 +13,6 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
-const defaultConfigPath = "./config.dev.json"
-
 var NodeCmd = &cli.Command{
 	Name:  "node",
 	Usage: "setup a gargantua node",
@@ -23,13 +21,6 @@ var NodeCmd = &cli.Command{
 			Name:   "initialize",
 			Usage:  "start a non-validator node by default",
 			Action: initialize,
-			Flags: []cli.Flag{
-				&cli.StringFlag{
-					Name:    "config",
-					Aliases: []string{"c"},
-					Value:   defaultConfigPath,
-				},
-			},
 		},
 	},
 }

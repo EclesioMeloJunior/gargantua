@@ -3,6 +3,7 @@ module github.com/EclesioMeloJunior/gargantua
 go 1.16
 
 require (
+	github.com/ethereum/go-ethereum v1.10.3
 	github.com/ipfs/go-ds-badger2 v0.1.0
 	github.com/libp2p/go-libp2p v0.14.0
 	github.com/libp2p/go-libp2p-connmgr v0.2.4
@@ -14,5 +15,7 @@ require (
 	github.com/libp2p/go-libp2p-tls v0.1.3
 	github.com/multiformats/go-multiaddr v0.3.1
 	github.com/stretchr/testify v1.7.0
-	github.com/urfave/cli/v2 v2.3.0 // indirect
+	github.com/urfave/cli/v2 v2.3.0
+	golang.org/x/crypto v0.0.0-20210322153248-0c34fe9e7dc2
+	golang.org/x/term v0.0.0-20210503060354-a79de5458b56
 )
