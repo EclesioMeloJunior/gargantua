@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"path/filepath"
 	"strings"
@@ -28,6 +29,12 @@ var WalletCmd = &cli.Command{
 					Aliases:  []string{"n"},
 				},
 			},
+		},
+
+		{
+			Name:   "addresses",
+			Usage:  "list all address in the current node",
+			Action: listAddresses,
 		},
 	},
 }
@@ -64,6 +71,10 @@ func newWalletAddress(c *cli.Context) error {
 	addr := wallet.GetAddress(pair.Public)
 	fmt.Printf("\nAddress: %s\n", addr)
 	return nil
+}
+
+func listAddresses(c *cli.Context) error {
+	return errors.New("not implemented yet")
 }
 
 func readPassword() (string, error) {
