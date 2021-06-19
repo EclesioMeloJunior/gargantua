@@ -7,21 +7,21 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var tests = []struct {
-	s string
-	e []byte
-}{
-	{
-		s: "",
-		e: []byte{0x80},
-	},
-	{
-		s: "dog",
-		e: []byte{byte(0x83), byte('d'), byte('o'), byte('g')},
-	},
-}
+func TestRLPSimpleEncoding(t *testing.T) {
+	tests := []struct {
+		s string
+		e []byte
+	}{
+		{
+			s: "",
+			e: []byte{0x80},
+		},
+		{
+			s: "dog",
+			e: []byte{0x83, 'd', 'o', 'g'},
+		},
+	}
 
-func TestRLPEncoding(t *testing.T) {
 	for _, s := range tests {
 		e := rlp.NewEncoder()
 		_, err := e.Encode(s.s)
@@ -32,17 +32,24 @@ func TestRLPEncoding(t *testing.T) {
 }
 
 func TestRLPEncodingMore55BytesLen(t *testing.T) {
-	b := make([]byte, 56)
-	for i := 0; i < 56; i++ {
-		b[i] = byte(i)
-	}
+	s := "Lorem ipsum dolor sit amet, consectetur adipisicing elit"
+	exp := []byte{0xb8, 0x38}
+	exp = append(exp, []byte(s)...)
 
 	e := rlp.NewEncoder()
-	_, err := e.Encode(b)
+	_, err := e.Encode(s)
 	require.NoError(t, err)
 
-	exp := []byte{byte(0xbd), byte(56)}
-	exp = append(exp, b...)
-
 	require.Equal(t, exp, e.Bytes())
+}
+
+func TestRLPEncodingSlices(t *testing.T) {
+	t1 := [][]byte{{'d', 'o', 'g'}, {'c', 'a', 't'}}
+	exp := []byte{byte(0xc0 + 8), byte(0x80 + 3), 'd', 'o', 'g', byte(0x80 + 3), 'c', 'a', 't'}
+
+	enc := rlp.NewEncoder()
+	_, err := enc.Encode(t1)
+	require.NoError(t, err)
+
+	require.Equal(t, exp, enc.Bytes())
 }

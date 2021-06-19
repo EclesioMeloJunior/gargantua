@@ -4,8 +4,11 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"math/big"
-	"strconv"
+)
+
+var (
+	EmptyString = []byte{0x80}
+	EmptyList   = []byte{0xc0}
 )
 
 type Encoder struct {
@@ -22,46 +25,89 @@ func NewEncoder() *Encoder {
 func (e *Encoder) Encode(b interface{}) (int, error) {
 	switch t := b.(type) {
 	case string, []byte:
-		return e.encodeString(t)
-	case []int, []uint, []string, [][]byte:
-		return 0, fmt.Errorf("unimplemented %s type to encode", t)
+		return e.encodeBytes(t, 0x80)
+	case []int, []uint:
+		return e.encodeNumber(t)
+	case []string:
+		enc := NewEncoder()
+		for _, s := range t {
+			_, err := enc.Encode(s)
+			// TODO: return the total of bytes written
+			if err != nil {
+				return 0, err
+			}
+		}
+		return e.encodeBytes(enc.Bytes(), 0xc0)
+	case [][]byte:
+		enc := NewEncoder()
+		for _, s := range t {
+			fmt.Println(s)
+			_, err := enc.Encode(s)
+			// TODO: return the total of bytes written
+			if err != nil {
+				return 0, err
+			}
+			fmt.Println(enc.Bytes())
+		}
+		fmt.Println(enc.Bytes())
+		return e.encodeBytes(enc.Bytes(), 0xc0)
 	default:
 		return 0, fmt.Errorf("unsuported %s type to encode", t)
 	}
 }
 
-func (e *Encoder) encodeString(i interface{}) (n int, err error) {
-	var d []byte
-
-	switch i := i.(type) {
-	case string:
-		d = []byte(i)
-	case []byte:
-		d = i
+func (e *Encoder) encodeBytes(i interface{}, offset byte) (int, error) {
+	d, err := fromStringToBytes(i)
+	if err != nil {
+		return 0, err
 	}
 
 	// if there is just one item and
 	// this byte is in the range [0x00, 0x7f]
-	if len(d) == 1 && (d[0]&0x80) == 0 {
+	if len(d) == 1 && (d[0]&offset) == 0 {
 		return e.buff.Write(d)
 	}
 
 	// if b is a 0-55 len bytes long,
 	if len(d) < 56 {
-		first := byte(0x80 + len(d))
+		first := offset + byte(len(d))
 		all := bytes.Join([][]byte{{first}, d}, []byte{})
-		return e.buff.Write(all)
-	} else if big.NewInt(int64(len(d))).Cmp(new(big.Int).Exp(big.NewInt(256), big.NewInt(8), nil)) == -1 {
-		base2 := strconv.FormatInt(int64(len(d)), 2)
-		fmt.Println(base2, len(d))
-		first := byte(0xb7 + len(base2))
-		all := bytes.Join([][]byte{{first}, {byte(len(d))}, d}, []byte{})
 		return e.buff.Write(all)
 	}
 
-	return 0, errors.New("too large input")
+	// if b is greater than 55 bytes
+	base2 := binaryForm(len(d))
+	first := byte(len(base2)) + offset + 55
+
+	all := bytes.Join([][]byte{{first}, {byte(len(d))}, d}, []byte{})
+	return e.buff.Write(all)
+}
+
+func (e *Encoder) encodeNumber(i interface{}) (n int, err error) {
+	return 0, nil
 }
 
 func (e *Encoder) Bytes() []byte {
 	return e.buff.Bytes()
+}
+
+func fromStringToBytes(i interface{}) (b []byte, err error) {
+	switch i := i.(type) {
+	case string:
+		b = []byte(i)
+	case []byte:
+		b = i
+	default:
+		err = errors.New("argument must be string or byte array")
+	}
+
+	return
+}
+
+func binaryForm(i int) []byte {
+	if i == 0 {
+		return []byte{}
+	}
+
+	return bytes.Join([][]byte{binaryForm(i / 256), {byte(i % 256)}}, []byte{})
 }
