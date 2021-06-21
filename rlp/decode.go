@@ -56,6 +56,8 @@ func (d *Decoder) defineKind() error {
 	return nil
 }
 
+func (d *Decoder) checkSize()
+
 func DecodeBytes(b []byte, val interface{}) error {
 	decoder := decoderPool.Get().(*Decoder)
 	defer decoderPool.Put(decoder)
