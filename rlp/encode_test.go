@@ -3,7 +3,7 @@ package rlp_test
 import (
 	"testing"
 
-	"github.com/EclesioMeloJunior/gargantua/trie/rlp"
+	"github.com/EclesioMeloJunior/gargantua/rlp"
 	"github.com/stretchr/testify/require"
 )
 

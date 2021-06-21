@@ -25,7 +25,7 @@ func NewEncoder() *Encoder {
 func (e *Encoder) Encode(b interface{}) (int, error) {
 	switch t := b.(type) {
 	case string, []byte:
-		return e.encodeBytes(t, 0x80)
+		return e.encodeBytes(t, EmptyString[0])
 	case []int, []uint:
 		return e.encodeNumber(t)
 	case []string:
@@ -37,7 +37,7 @@ func (e *Encoder) Encode(b interface{}) (int, error) {
 				return 0, err
 			}
 		}
-		return e.encodeBytes(enc.Bytes(), 0xc0)
+		return e.encodeBytes(enc.Bytes(), EmptyList[0])
 	case [][]byte:
 		enc := NewEncoder()
 		for _, s := range t {
@@ -50,7 +50,7 @@ func (e *Encoder) Encode(b interface{}) (int, error) {
 			fmt.Println(enc.Bytes())
 		}
 		fmt.Println(enc.Bytes())
-		return e.encodeBytes(enc.Bytes(), 0xc0)
+		return e.encodeBytes(enc.Bytes(), EmptyList[0])
 	default:
 		return 0, fmt.Errorf("unsuported %s type to encode", t)
 	}
