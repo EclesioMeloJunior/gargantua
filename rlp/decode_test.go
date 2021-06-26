@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestDecoder(t *testing.T) {
+func TestDecoderString(t *testing.T) {
 	s := "Lorem ipsum dolor sit amet, consectetur adipisicing elit"
 	enc := rlp.NewEncoder()
 	_, err := enc.Encode(s)
