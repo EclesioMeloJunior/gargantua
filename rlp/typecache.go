@@ -29,6 +29,7 @@ func (i *typeinfo) generate(t reflect.Type) {
 
 type typekey struct {
 	reflect.Type
+	tags
 }
 
 type typecache struct {
@@ -95,7 +96,6 @@ type field struct {
 }
 
 func getStructFields(t reflect.Type) ([]field, error) {
-
 	for i := 0; i < t.NumField(); i++ {
 		if f := t.Field(i); f.PkgPath == "" {
 			tags, err := parseStructTag(t, f)
@@ -109,6 +109,18 @@ func getStructFields(t reflect.Type) ([]field, error) {
 
 		}
 	}
+}
+
+func (c *typecache) getInfoCached(typ reflect.Type, tags tags) *typeinfo {
+	key := typekey{typ, tags}
+	if info := c.next[key]; info != nil {
+		return info
+	}
+
+	info := new(typeinfo)
+	c.next[key] = info
+	info.generate(typ)
+	return info
 }
 
 func parseStructTag(typ reflect.Type, f reflect.StructField) (tags, error) {
