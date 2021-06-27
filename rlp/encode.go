@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"reflect"
 )
 
 var (
@@ -49,10 +50,15 @@ func (e *Encoder) Encode(b interface{}) (int, error) {
 			}
 			fmt.Println(enc.Bytes())
 		}
-		fmt.Println(enc.Bytes())
 		return e.encodeBytes(enc.Bytes(), EmptyList[0])
 	default:
-		return 0, fmt.Errorf("unsuported %s type to encode", t)
+		rval := reflect.ValueOf(b)
+		writer, err := cachedWriter(rval.Type())
+		if err != nil {
+			return 0, fmt.Errorf("unsuported %s type to encode", t)
+		}
+
+		return writer(rval, e)
 	}
 }
 
@@ -110,4 +116,39 @@ func binaryForm(i int) []byte {
 	}
 
 	return bytes.Join([][]byte{binaryForm(i / 256), {byte(i % 256)}}, []byte{})
+}
+
+func createWriter(t reflect.Type) (writer, error) {
+	k := t.Kind()
+	switch k {
+	case reflect.Ptr:
+		return createPtrWriter(t)
+	case reflect.Struct:
+		return
+	default:
+		return nil, fmt.Errorf("writer not implemented for type %s", t)
+	}
+}
+
+func createPtrWriter(t reflect.Type) (writer, error) {
+	info := new(typeinfo)
+	info.generate(t.Elem())
+
+	if info.writerErr != nil {
+		return nil, info.writerErr
+	}
+
+	writer := func(val reflect.Value, e *Encoder) (int, error) {
+		if val.IsNil() {
+			return 0, errors.New("could not encode nil pointer")
+		}
+
+		return info.writer(val.Elem(), e)
+	}
+
+	return writer, nil
+}
+
+func createStructWriter(t reflect.Type) (writer, error) {
+	fields, err := getStructFields(t)
 }

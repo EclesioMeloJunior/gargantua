@@ -53,3 +53,16 @@ func TestRLPEncodingSlices(t *testing.T) {
 
 	require.Equal(t, exp, enc.Bytes())
 }
+
+func TestRLPEncodingStruc(t *testing.T) {
+	teststruct := struct {
+		Name  string `rlp:"name"`
+		Value string `rlp:"value"`
+	}{}
+
+	enc := rlp.NewEncoder()
+	_, err := enc.Encode(teststruct)
+	require.NoError(t, err)
+
+	require.NotEmpty(t, enc.Bytes())
+}
