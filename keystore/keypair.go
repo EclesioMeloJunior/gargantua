@@ -6,6 +6,11 @@ import (
 	"crypto/rand"
 )
 
+const (
+	PublicType  = "public"
+	PrivateType = "private"
+)
+
 type (
 	Pair struct {
 		Private *PrivateKey

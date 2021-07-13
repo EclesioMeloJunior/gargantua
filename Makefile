@@ -1,6 +1,6 @@
 .PHONY: gg
 gg:
 ifneq ($(wildcard ./bin),)
-	@rd /s /q "./bin"	
+	@rm -rf "./bin"	
 endif
-	@go build -o ./bin/gg.exe ./cmd/cli/...
+	@go build -o ./bin/gg ./cmd/cli/...

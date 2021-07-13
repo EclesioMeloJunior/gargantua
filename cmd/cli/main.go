@@ -8,6 +8,15 @@ import (
 
 const defaultConfigPath = "./config.dev.json"
 
+var globalFlags = []cli.Flag{
+	&cli.StringFlag{
+		HasBeenSet: false,
+		Name:       "config",
+		Aliases:    []string{"c"},
+		Value:      defaultConfigPath,
+	},
+}
+
 func main() {
 	app := &cli.App{
 		Name:  "gg",
@@ -16,17 +25,11 @@ func main() {
 
 	app.Commands = []*cli.Command{
 		NodeCmd,
-		WalletCmd,
+		KeysCmd,
 	}
 
 	// global flags
-	app.Flags = []cli.Flag{
-		&cli.StringFlag{
-			Name:    "config",
-			Aliases: []string{"c"},
-			Value:   defaultConfigPath,
-		},
-	}
+	app.Flags = globalFlags
 
 	if err := app.Run(os.Args); err != nil {
 		panic(err)

@@ -13,9 +13,10 @@ import (
 	"os"
 )
 
-const defaultKeystoreFile = "%s/%s-%s.keystore"
+// DefaultKeystoreFile is a pattern to keys files name
+const DefaultKeystoreFile = "%s/%s-%s.keystore"
 
-func StoreKeyPair(wallet string, path string, pair *Pair, passowrd string) error {
+func StoreKeyPair(name string, path string, pair *Pair, passowrd string) error {
 	x509encodedPrivate, err := x509.MarshalECPrivateKey(pair.Private.PrivateKey)
 	if err != nil {
 		return err
@@ -49,12 +50,12 @@ func StoreKeyPair(wallet string, path string, pair *Pair, passowrd string) error
 		return fmt.Errorf("failed to encode public key: %w", err)
 	}
 
-	err = os.WriteFile(fmt.Sprintf(defaultKeystoreFile, path, wallet, "private"), encryptedPrivateKey, os.ModePerm)
+	err = os.WriteFile(fmt.Sprintf(DefaultKeystoreFile, path, name, PrivateType), encryptedPrivateKey, os.ModePerm)
 	if err != nil {
 		return err
 	}
 
-	err = os.WriteFile(fmt.Sprintf(defaultKeystoreFile, path, wallet, "public"), publicBuff.Bytes(), os.ModePerm)
+	err = os.WriteFile(fmt.Sprintf(DefaultKeystoreFile, path, name, PublicType), publicBuff.Bytes(), os.ModePerm)
 	if err != nil {
 		return err
 	}

@@ -9,40 +9,45 @@ import (
 
 	"github.com/EclesioMeloJunior/gargantua/config"
 	"github.com/EclesioMeloJunior/gargantua/keystore"
-	"github.com/EclesioMeloJunior/gargantua/wallet"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/term"
 )
 
-var WalletCmd = &cli.Command{
-	Name:  "wallet",
-	Usage: "manage wallets private and public keys",
+var KeysCmd = &cli.Command{
+	Name:  "key",
+	Usage: "manage private and public keys",
 	Subcommands: []*cli.Command{
 		{
 			Name:   "new",
 			Usage:  "create and stores the keypair",
-			Action: newWalletAddress,
-			Flags: []cli.Flag{
-				&cli.StringFlag{
-					Required: true,
-					Name:     "name",
-					Aliases:  []string{"n"},
-				},
-			},
+			Action: newKeyPairCmd,
+			Flags: append(globalFlags, &cli.StringFlag{
+				Required: true,
+				Name:     "name",
+				Aliases:  []string{"n"},
+			}),
 		},
 
 		{
-			Name:   "addresses",
+			Name:   "list",
 			Usage:  "list all address in the current node",
-			Action: listAddresses,
+			Action: listCmd,
 		},
 	},
 }
 
-func newWalletAddress(c *cli.Context) error {
+func newKeyPairCmd(c *cli.Context) error {
 	nodeconfig, err := config.FromJson(c.String("config"))
+	if err != nil {
+		return err
+	}
+
 	basepath, err := config.ExpandDir(nodeconfig.Node.Basepath)
 	if err != nil {
+		return err
+	}
+
+	if err = config.SetupBasepath(basepath); err != nil {
 		return err
 	}
 
@@ -56,24 +61,22 @@ func newWalletAddress(c *cli.Context) error {
 		return err
 	}
 
-	walletdir, err := config.ExpandDir(filepath.Join(basepath, "wallets"))
+	keysdir, err := config.ExpandDir(filepath.Join(basepath, "keys"))
 	if err != nil {
 		return err
 	}
 
-	fmt.Println(walletdir)
-
-	err = keystore.StoreKeyPair(c.String("name"), walletdir, pair, password)
+	err = keystore.StoreKeyPair(c.String("name"), keysdir, pair, password)
 	if err != nil {
 		return err
 	}
 
-	addr := wallet.GetAddress(pair.Public)
+	addr := keystore.GetAddress(pair.Public)
 	fmt.Printf("\nAddress: %s\n", addr)
 	return nil
 }
 
-func listAddresses(c *cli.Context) error {
+func listCmd(c *cli.Context) error {
 	return errors.New("not implemented yet")
 }
 
@@ -89,10 +92,13 @@ func readPassword() (string, error) {
 	}
 
 	fmt.Printf("\nConfirm password: ")
+
 	byteConfirmPassword, err := term.ReadPassword(int(syscall.Stdin))
 	if err != nil {
 		return "", err
 	}
+
+	fmt.Print("\n")
 
 	cmp := strings.Compare(
 		strings.TrimSpace(string(bytePassword)),

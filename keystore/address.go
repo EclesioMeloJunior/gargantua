@@ -1,13 +1,12 @@
-package wallet
+package keystore
 
 import (
-	"github.com/EclesioMeloJunior/gargantua/keystore"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/crypto"
 	"golang.org/x/crypto/sha3"
 )
 
-func GetAddress(pk *keystore.PublicKey) string {
+func GetAddress(pk *PublicKey) string {
 	pkBytes := crypto.FromECDSAPub(pk.PublicKey)
 
 	hash := sha3.NewLegacyKeccak256()

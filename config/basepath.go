@@ -21,7 +21,7 @@ func SetupBasepath(basepath string) error {
 		return err
 	}
 
-	return createWalletsDir(basepath)
+	return createKeysDir(basepath)
 }
 
 func ExpandDir(dir string) (string, error) {
@@ -37,13 +37,13 @@ func ExpandDir(dir string) (string, error) {
 	return dir, nil
 }
 
-func createWalletsDir(basepaht string) error {
-	walletsdir := filepath.Join(basepaht, "wallets")
+func createKeysDir(basepaht string) error {
+	keysdir := filepath.Join(basepaht, "keys")
 
-	_, err := os.Stat(walletsdir)
+	_, err := os.Stat(keysdir)
 
 	if os.IsNotExist(err) {
-		return os.MkdirAll(walletsdir, os.ModeDir|os.ModePerm)
+		return os.MkdirAll(keysdir, os.ModeDir|os.ModePerm)
 	}
 
 	return err
