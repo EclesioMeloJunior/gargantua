@@ -3,11 +3,9 @@ package main
 import (
 	"context"
 	"errors"
-	"fmt"
 	"log"
 	"os"
 	"os/signal"
-	"path/filepath"
 	"syscall"
 
 	"github.com/EclesioMeloJunior/gargantua/config"
@@ -45,7 +43,7 @@ func initialize(c *cli.Context) error {
 		return err
 	}
 
-	hasKeyPair, err := checkNodeHasKeyPair(expandedDir, c.String("key"))
+	hasKeyPair, err := keystore.CheckNodeHasKeyPair(expandedDir, c.String("key"))
 	if err != nil {
 		return err
 	}
@@ -87,40 +85,4 @@ func initialize(c *cli.Context) error {
 	log.Println("shutting down...")
 
 	return nil
-}
-
-func checkNodeHasKeyPair(basepath, name string) (bool, error) {
-	keysdir, err := config.ExpandDir(filepath.Join(basepath, "keys"))
-	if err != nil {
-		return false, err
-	}
-
-	publicKeyPath := fmt.Sprintf(keystore.DefaultKeystoreFile, keysdir, name, keystore.PublicType)
-	privateKeyPath := fmt.Sprintf(keystore.DefaultKeystoreFile, keysdir, name, keystore.PrivateType)
-
-	pubExists, err := checkFileStat(publicKeyPath)
-	if err != nil {
-		return false, err
-	}
-
-	privExists, err := checkFileStat(privateKeyPath)
-	if err != nil {
-		return false, err
-	}
-
-	return pubExists && privExists, nil
-}
-
-func checkFileStat(filepath string) (bool, error) {
-	finfo, err := os.Stat(filepath)
-
-	if err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			return false, nil
-		}
-
-		return false, errors.New("node doesnt have key pair")
-	}
-
-	return finfo != nil, nil
 }
