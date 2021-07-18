@@ -8,7 +8,7 @@ import (
 
 type Address [32]byte
 
-func (a *Address) String() string {
+func (a Address) String() string {
 	return hexutil.Encode(a[12:])
 }
 

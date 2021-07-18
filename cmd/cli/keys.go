@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 	"path/filepath"
 	"strings"
@@ -29,9 +28,14 @@ var KeysCmd = &cli.Command{
 		},
 
 		{
-			Name:   "list",
-			Usage:  "list all address in the current node",
-			Action: listCmd,
+			Name:   "address",
+			Usage:  "get the public address of a specific key",
+			Action: getPublicAddress,
+			Flags: append(globalFlags, &cli.StringFlag{
+				Required: true,
+				Name:     "key",
+				Aliases:  []string{"k"},
+			}),
 		},
 	},
 }
@@ -76,8 +80,25 @@ func newKeyPairCmd(c *cli.Context) error {
 	return nil
 }
 
-func listCmd(c *cli.Context) error {
-	return errors.New("not implemented yet")
+func getPublicAddress(c *cli.Context) error {
+	nodeconfig, err := config.FromJson(c.String("config"))
+	if err != nil {
+		return err
+	}
+
+	var basepath string
+	if basepath, err = config.ExpandDir(nodeconfig.Node.Basepath); err != nil {
+		return err
+	}
+
+	pubkey, err := keystore.LoadPublicKey(basepath, c.String("key"))
+	if err != nil {
+		return err
+	}
+
+	addr := keystore.GetAddress(pubkey)
+	fmt.Printf("Address: %s\n", addr)
+	return nil
 }
 
 func readPassword() (string, error) {
