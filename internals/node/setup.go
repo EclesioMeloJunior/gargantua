@@ -1,6 +1,8 @@
 package node
 
 import (
+	"encoding/binary"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -9,13 +11,15 @@ import (
 	"path/filepath"
 )
 
-const (
-	GenesisStorageChain = "genesis_chain_name"
+var (
+	GenesisGeneralBucket  = []byte("general")
+	GenesisBalancesBucket = []byte("balances")
+	GenesisChainNameKey   = []byte("genesis_chain_name")
 )
 
 type Storage interface {
 	HasKey(key []byte) (bool, error)
-	Store(key []byte, value []byte) error
+	StoreOnBucket(bucket, key, value []byte) error
 }
 
 func ReadGenesis(basepath, chain string) (*Genesis, error) {
@@ -41,10 +45,37 @@ func ReadGenesis(basepath, chain string) (*Genesis, error) {
 }
 
 func LoadGenesisOnStorage(g *Genesis, s Storage) error {
-	if ok, err := s.HasKey([]byte(g.Chain)); err != nil {
+	// store chain name
+	if err := tryStore(GenesisGeneralBucket, GenesisChainNameKey, []byte(g.Chain), s); err != nil {
 		return err
-	} else if !ok {
-		return s.Store([]byte(GenesisStorageChain), []byte(g.Chain))
+	}
+
+	// store balances
+	for addr, value := range g.Balances {
+		var bvalue [4]byte
+		binary.LittleEndian.PutUint32(bvalue[:], value)
+
+		addrBytes, err := hex.DecodeString(addr)
+		if err != nil {
+			return err
+		}
+
+		if err := tryStore(GenesisBalancesBucket, addrBytes, bvalue[:], s); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func tryStore(bucket, key, v []byte, s Storage) error {
+	ok, err := s.HasKey(key)
+	if err != nil {
+		return err
+	}
+
+	if !ok {
+		return s.StoreOnBucket(bucket, key, v)
 	}
 
 	return nil
