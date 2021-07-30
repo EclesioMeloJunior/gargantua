@@ -1,6 +1,11 @@
 {
     "chainName": "gossamer-test",
     "balances": {
-        "0x19135555caf16c94f163d60daa54d360e8ad415f": "0"
-    }
+        "0x19135555caf16c94f163d60daa54d360e8ad415f": 0
+    },
+    "authorities": [
+        "0x74d5a86d9ca4c05ce83f2b97321de9443ed7a6da",
+        "0x1f96651e850e37e0b1830feb76658dd680dbba56",
+        "0xf5e1f3c53d096de0841ca2edd9ad6ad29532cec9"
+    ]
 }

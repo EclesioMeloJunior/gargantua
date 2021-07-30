@@ -20,13 +20,17 @@ var NodeCmd = &cli.Command{
 	Usage: "setup a gargantua node",
 	Subcommands: []*cli.Command{
 		{
-			Name:   "initialize",
+			Name:   "init",
 			Usage:  "start a non-validator node by default",
 			Action: initialize,
 			Flags: append(globalFlags, &cli.StringFlag{
 				Required: true,
 				Name:     "key",
 				Aliases:  []string{"k"},
+			}, &cli.StringFlag{
+				Required:    true,
+				Name:        "chain",
+				DefaultText: "test",
 			}),
 		},
 	},
@@ -77,6 +81,20 @@ func initialize(c *cli.Context) error {
 	if err = rpcservice.Setup(); err != nil {
 		return err
 	}
+
+	// stg, err := storage.NewStorage(expandedDir)
+	// if err != nil {
+	// 	return err
+	// }
+
+	// // gn, err := genesis.ReadGenesis(expandedDir, c.String("chain"))
+	// // if err != nil {
+	// // 	return err
+	// // }
+
+	// // if err := genesis.StoreGenesis(gn, stg); err != nil {
+	// // 	return err
+	// // }
 
 	ch := make(chan os.Signal, 1)
 	signal.Notify(ch, syscall.SIGINT, syscall.SIGTERM)

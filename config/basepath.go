@@ -1,10 +1,13 @@
 package config
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 )
+
+const keysPath = "keys"
 
 //SetupBasepath creates the basepath dir if it not exists
 func SetupBasepath(basepath string) error {
@@ -12,6 +15,8 @@ func SetupBasepath(basepath string) error {
 	if err != nil {
 		return err
 	}
+
+	fmt.Printf("%s\n", dir)
 
 	_, err = os.Stat(dir)
 
@@ -38,7 +43,7 @@ func ExpandDir(dir string) (string, error) {
 }
 
 func createKeysDir(basepaht string) error {
-	keysdir := filepath.Join(basepaht, "keys")
+	keysdir := filepath.Join(basepaht, keysPath)
 
 	_, err := os.Stat(keysdir)
 
