@@ -9,8 +9,10 @@ import (
 	"syscall"
 
 	"github.com/EclesioMeloJunior/gargantua/config"
+	"github.com/EclesioMeloJunior/gargantua/internals/genesis"
 	"github.com/EclesioMeloJunior/gargantua/keystore"
 	"github.com/EclesioMeloJunior/gargantua/p2p"
+	"github.com/EclesioMeloJunior/gargantua/storage"
 	"github.com/libp2p/go-libp2p-core/protocol"
 	"github.com/urfave/cli/v2"
 )
@@ -82,19 +84,19 @@ func initialize(c *cli.Context) error {
 		return err
 	}
 
-	// stg, err := storage.NewStorage(expandedDir)
-	// if err != nil {
-	// 	return err
-	// }
+	stg, err := storage.NewStorage(expandedDir)
+	if err != nil {
+		return err
+	}
 
-	// // gn, err := genesis.ReadGenesis(expandedDir, c.String("chain"))
-	// // if err != nil {
-	// // 	return err
-	// // }
+	gn, err := genesis.ReadGenesis(expandedDir, c.String("chain"))
+	if err != nil {
+		return err
+	}
 
-	// // if err := genesis.StoreGenesis(gn, stg); err != nil {
-	// // 	return err
-	// // }
+	if err := genesis.StoreGenesis(gn, stg); err != nil {
+		return err
+	}
 
 	ch := make(chan os.Signal, 1)
 	signal.Notify(ch, syscall.SIGINT, syscall.SIGTERM)
