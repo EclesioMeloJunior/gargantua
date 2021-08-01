@@ -15,11 +15,11 @@ var (
 )
 
 type Storage interface {
-	StoreOnBucket(bucket, key, value []byte) error
+	PutOnBucket(bucket, key, value []byte) error
 }
 
 func tryStoreGenesisInfo(bucket, key, v []byte, s Storage) error {
-	return s.StoreOnBucket(bucket, key, v)
+	return s.PutOnBucket(bucket, key, v)
 }
 
 func StoreGenesis(g *Genesis, s Storage) error {
@@ -29,11 +29,11 @@ func StoreGenesis(g *Genesis, s Storage) error {
 	}
 
 	// store balances
-	for addr, value := range g.Balances {
+	for acc, value := range g.Balances {
 		var bvalue [4]byte
 		binary.LittleEndian.PutUint32(bvalue[:], value)
 
-		addrBytes, err := hex.DecodeString(addr)
+		addrBytes, err := hex.DecodeString(acc[2:])
 		if err != nil {
 			return err
 		}
@@ -42,6 +42,5 @@ func StoreGenesis(g *Genesis, s Storage) error {
 			return err
 		}
 	}
-
 	return nil
 }

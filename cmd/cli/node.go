@@ -2,17 +2,24 @@ package main
 
 import (
 	"context"
+	"encoding/binary"
+	"encoding/hex"
 	"errors"
+	"fmt"
 	"log"
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/EclesioMeloJunior/gargantua/config"
+	"github.com/EclesioMeloJunior/gargantua/internals/block"
 	"github.com/EclesioMeloJunior/gargantua/internals/genesis"
 	"github.com/EclesioMeloJunior/gargantua/keystore"
 	"github.com/EclesioMeloJunior/gargantua/p2p"
 	"github.com/EclesioMeloJunior/gargantua/storage"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/trie"
 	"github.com/libp2p/go-libp2p-core/protocol"
 	"github.com/urfave/cli/v2"
 )
@@ -73,9 +80,7 @@ func initialize(c *cli.Context) error {
 	log.Println("node started", n.Host.ID())
 	log.Println("Addresses", n.MultiAddrs())
 
-	if err := n.StartDiscovery(); err != nil {
-		return err
-	}
+	go n.StartDiscovery()
 
 	log.Println("protocols", n.Host.Mux().Protocols())
 
@@ -94,9 +99,35 @@ func initialize(c *cli.Context) error {
 		return err
 	}
 
-	if err := genesis.StoreGenesis(gn, stg); err != nil {
+	b, err := block.NewBlockFromGenesis(gn, stg)
+	if err != nil {
 		return err
 	}
+
+	log.Println(*b.Header)
+	log.Printf("genesis created: %x", b.Header.BlockHash[:])
+
+	// ======== TESTING STATE ROOT RECOVERY =============
+	time.Sleep(time.Second * 10)
+	stateRoot, err := stg.GetFromBucket(block.BlocksHashBucket, b.Header.BlockHash[:])
+	fmt.Printf("root state from block from db: %x\n", common.BytesToHash(stateRoot))
+	if err != nil {
+		return err
+	}
+
+	recoveryTrie, err := trie.New(common.BytesToHash(stateRoot), trie.NewDatabase(stg))
+	if err != nil {
+		return err
+	}
+
+	accBytes, err := hex.DecodeString("19135555caf16c94f163d60daa54d360e8ad415f")
+	if err != nil {
+		return err
+	}
+
+	accBalanceBytes := recoveryTrie.Get(accBytes)
+
+	fmt.Println(binary.LittleEndian.Uint32(accBalanceBytes))
 
 	ch := make(chan os.Signal, 1)
 	signal.Notify(ch, syscall.SIGINT, syscall.SIGTERM)

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"path/filepath"
 )
 
 type (
@@ -27,7 +26,7 @@ func parseFromJSON(b []byte) (*Genesis, error) {
 }
 
 func ReadGenesis(basepath, chain string) (*Genesis, error) {
-	genesisfile := filepath.Join(basepath, fmt.Sprintf("%s.json", chain))
+	genesisfile := fmt.Sprintf("./chain/%s/genesis.json", chain)
 	_, err := os.Stat(genesisfile)
 	if errors.Is(os.ErrNotExist, err) {
 		return nil, err

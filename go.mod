@@ -3,8 +3,8 @@ module github.com/EclesioMeloJunior/gargantua
 go 1.16
 
 require (
-	github.com/boltdb/bolt v1.3.1 // indirect
-	github.com/ethereum/go-ethereum v1.10.3
+	github.com/boltdb/bolt v1.3.1
+	github.com/ethereum/go-ethereum v1.10.6
 	github.com/ipfs/go-ds-badger2 v0.1.0
 	github.com/libp2p/go-libp2p v0.14.0
 	github.com/libp2p/go-libp2p-connmgr v0.2.4
