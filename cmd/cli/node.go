@@ -2,15 +2,11 @@ package main
 
 import (
 	"context"
-	"encoding/binary"
-	"encoding/hex"
 	"errors"
-	"fmt"
 	"log"
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	"github.com/EclesioMeloJunior/gargantua/config"
 	"github.com/EclesioMeloJunior/gargantua/internals/block"
@@ -18,8 +14,6 @@ import (
 	"github.com/EclesioMeloJunior/gargantua/keystore"
 	"github.com/EclesioMeloJunior/gargantua/p2p"
 	"github.com/EclesioMeloJunior/gargantua/storage"
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/trie"
 	"github.com/libp2p/go-libp2p-core/protocol"
 	"github.com/urfave/cli/v2"
 )
@@ -37,9 +31,8 @@ var NodeCmd = &cli.Command{
 				Name:     "key",
 				Aliases:  []string{"k"},
 			}, &cli.StringFlag{
-				Required:    true,
-				Name:        "chain",
-				DefaultText: "test",
+				Required: true,
+				Name:     "chain",
 			}),
 		},
 	},
@@ -89,7 +82,7 @@ func initialize(c *cli.Context) error {
 		return err
 	}
 
-	stg, err := storage.NewStorage(expandedDir)
+	storage, err := storage.NewStorage(expandedDir)
 	if err != nil {
 		return err
 	}
@@ -99,35 +92,12 @@ func initialize(c *cli.Context) error {
 		return err
 	}
 
-	b, err := block.NewBlockFromGenesis(gn, stg)
+	b, err := block.NewBlockFromGenesis(gn, storage)
 	if err != nil {
 		return err
 	}
 
-	log.Println(*b.Header)
-	log.Printf("genesis created: %x", b.Header.BlockHash[:])
-
-	// ======== TESTING STATE ROOT RECOVERY =============
-	time.Sleep(time.Second * 10)
-	stateRoot, err := stg.GetFromBucket(block.BlocksHashBucket, b.Header.BlockHash[:])
-	fmt.Printf("root state from block from db: %x\n", common.BytesToHash(stateRoot))
-	if err != nil {
-		return err
-	}
-
-	recoveryTrie, err := trie.New(common.BytesToHash(stateRoot), trie.NewDatabase(stg))
-	if err != nil {
-		return err
-	}
-
-	accBytes, err := hex.DecodeString("19135555caf16c94f163d60daa54d360e8ad415f")
-	if err != nil {
-		return err
-	}
-
-	accBalanceBytes := recoveryTrie.Get(accBytes)
-
-	fmt.Println(binary.LittleEndian.Uint32(accBalanceBytes))
+	log.Printf("genesis created: 0x%x", b.Header.BlockHash[:])
 
 	ch := make(chan os.Signal, 1)
 	signal.Notify(ch, syscall.SIGINT, syscall.SIGTERM)

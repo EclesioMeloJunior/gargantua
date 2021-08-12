@@ -4,7 +4,6 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"fmt"
-	"io"
 	"time"
 
 	"github.com/EclesioMeloJunior/gargantua/internals/genesis"
@@ -24,31 +23,26 @@ var (
 type (
 	Storage interface {
 		PutOnBucket(bucket, key, value []byte) error
-		Put(key, value []byte) error
-		Delete(key []byte) error
-
-		ethdb.KeyValueStore
-
-		io.Closer
+		EthereumDB() ethdb.KeyValueStore
 	}
 )
 
 func NewBlockFromGenesis(g *genesis.Genesis, s Storage) (*Block, error) {
 	b := NewEmptyBlock()
 
-	trieHash, err := trieFromGenesis(g, s)
+	trieHash, err := trieFromGenesis(g, s.EthereumDB())
 	if err != nil {
 		return nil, err
 	}
 
 	b.Header = NewHeader(Hash{}, trieHash, time.Now().Unix())
 	s.PutOnBucket(BlocksHashBucket, b.Header.BlockHash[:], trieHash[:])
-	fmt.Printf("root state from block: %x\n", trieHash[:])
 	return b, nil
 }
 
-func trieFromGenesis(g *genesis.Genesis, s Storage) (Hash, error) {
-	trie, err := trie.New(common.Hash{}, trie.NewDatabase(s))
+func trieFromGenesis(g *genesis.Genesis, db ethdb.KeyValueStore) (Hash, error) {
+	trieDB := trie.NewDatabase(db)
+	t, err := trie.New(common.Hash{}, trieDB)
 	if err != nil {
 		return Hash{}, err
 	}
@@ -62,7 +56,7 @@ func trieFromGenesis(g *genesis.Genesis, s Storage) (Hash, error) {
 		var bvalue [4]byte
 		binary.LittleEndian.PutUint32(bvalue[:], bal)
 
-		trie.Update(accBytes, bvalue[:])
+		t.Update(accBytes, bvalue[:])
 	}
 
 	for _, auth := range g.Authorities {
@@ -71,14 +65,18 @@ func trieFromGenesis(g *genesis.Genesis, s Storage) (Hash, error) {
 		var bvalue [4]byte
 		binary.LittleEndian.PutUint32(bvalue[:], 0)
 
-		trie.Update([]byte(filledPattern), bvalue[:])
+		t.Update([]byte(filledPattern), bvalue[:])
 	}
 
-	trie.Update(genesis.GenesisChainNameKey, []byte(g.ChainName))
-	hash, err := trie.Commit(nil)
+	t.Update(genesis.GenesisChainNameKey, []byte(g.ChainName))
 
+	hash, err := t.Commit(nil)
 	if err != nil {
 		return Hash{}, err
+	}
+
+	if err = trieDB.Commit(hash, false, nil); err != nil {
+		return Hash{}, nil
 	}
 
 	return Hash(hash), nil
