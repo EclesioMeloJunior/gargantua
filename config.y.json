@@ -1,13 +1,14 @@
 {
     "node": {
         "protocolID": "/gargantua/dev/v0",
-        "basepath": "~/.y.gargantua"
+        "basepath": "~/.y.gargantua",
+        "mode": "listening"
     },
 
     "network": {
         "port": "9002",
         "bootnodes": [
-            "/ip4/127.0.0.1/tcp/9001/p2p/12D3KooWAw1P29JXjZVYs6xTVkZYg8rHxZUejm1VCoEH9SbwNPpw"
+            "/ip4/192.168.88.3/tcp/9001/p2p/12D3KooWC5LHxBzYyiteKaQvGRVrak1NbfuRzZ9LtVJ9KYE8KTau"
         ]
     }    
 }

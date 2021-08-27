@@ -3,13 +3,16 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log"
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/EclesioMeloJunior/gargantua/config"
 	"github.com/EclesioMeloJunior/gargantua/internals/block"
+	"github.com/EclesioMeloJunior/gargantua/internals/encoding"
 	"github.com/EclesioMeloJunior/gargantua/internals/genesis"
 	"github.com/EclesioMeloJunior/gargantua/keystore"
 	"github.com/EclesioMeloJunior/gargantua/p2p"
@@ -87,22 +90,36 @@ func initialize(c *cli.Context) error {
 		return err
 	}
 
-	gn, err := genesis.ReadGenesis(expandedDir, c.String("chain"))
-	if err != nil {
-		return err
-	}
+	if nodeconfig.Node.Mode != config.ListeningMode {
+		gn, err := genesis.ReadGenesis(expandedDir, c.String("chain"))
+		if err != nil {
+			return err
+		}
 
-	b, err := block.NewBlockFromGenesis(gn, storage)
-	if err != nil {
-		return err
-	}
+		b, err := block.NewBlockFromGenesis(gn, storage)
+		if err != nil {
+			return err
+		}
 
-	log.Printf("genesis created: 0x%x", b.Header.BlockHash[:])
+		log.Printf("genesis created: 0x%x", b.Header.BlockHash[:])
+
+		time.Sleep(time.Second * 20)
+
+		newBlockHash, err := encoding.RLPEncode(b)
+		if err != nil {
+			log.Printf("problem to encoding new block: %v\n", err)
+			return err
+		}
+
+		r, errs := rpcservice.Call("BlockHandler", "NewBlock", newBlockHash, []byte{})
+		fmt.Println(errs)
+		fmt.Println(r)
+	}
 
 	ch := make(chan os.Signal, 1)
 	signal.Notify(ch, syscall.SIGINT, syscall.SIGTERM)
-
 	<-ch
+
 	log.Println("shutting down...")
 
 	return nil

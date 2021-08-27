@@ -1,6 +1,11 @@
 package block
 
-import "encoding/binary"
+import (
+	"encoding/binary"
+	"math/big"
+
+	"github.com/EclesioMeloJunior/gargantua/internals/encoding"
+)
 
 type Body []byte
 
@@ -8,7 +13,7 @@ type Header struct {
 	ParentHash Hash
 	BlockHash  Hash
 	StateRoot  Hash
-	CreatedAt  int64 // timestamp
+	CreatedAt  *big.Int // timestamp
 }
 
 func NewHeader(parentHash Hash, root Hash, createdAt int64) *Header {
@@ -24,7 +29,7 @@ func NewHeader(parentHash Hash, root Hash, createdAt int64) *Header {
 		ParentHash: parentHash,
 		StateRoot:  root,
 		BlockHash:  NewSHA256Hash(toHash),
-		CreatedAt:  createdAt,
+		CreatedAt:  big.NewInt(createdAt),
 	}
 }
 
@@ -32,12 +37,12 @@ func NewHeader(parentHash Hash, root Hash, createdAt int64) *Header {
 func (h Header) Hash() (Hash, error) {
 	// if blockhash is empty then update and return
 	if len(h.BlockHash[:]) < 1 {
-		generatedHash, err := RLPAndSHA256Hash(h)
+		generatedHash, err := encoding.RLPEncode(h)
 		if err != nil {
 			return Hash{}, err
 		}
 
-		h.BlockHash = generatedHash
+		h.BlockHash = NewSHA256Hash(generatedHash)
 	}
 
 	return h.BlockHash, nil

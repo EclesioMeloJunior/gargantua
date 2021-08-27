@@ -5,10 +5,15 @@ import (
 	"io/ioutil"
 )
 
+const (
+	ListeningMode string = "listening"
+)
+
 type (
 	Node struct {
 		Protocol string `json:"protocol"`
 		Basepath string `json:"basepath"`
+		Mode     string `json:mode`
 	}
 
 	Network struct {
