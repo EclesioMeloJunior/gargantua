@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"errors"
-	"fmt"
 	"log"
 	"os"
 	"os/signal"
@@ -12,7 +11,6 @@ import (
 
 	"github.com/EclesioMeloJunior/gargantua/config"
 	"github.com/EclesioMeloJunior/gargantua/internals/block"
-	"github.com/EclesioMeloJunior/gargantua/internals/encoding"
 	"github.com/EclesioMeloJunior/gargantua/internals/genesis"
 	"github.com/EclesioMeloJunior/gargantua/keystore"
 	"github.com/EclesioMeloJunior/gargantua/p2p"
@@ -72,6 +70,7 @@ func initialize(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
+	n.SetupStreamHandlers(nodeconfig.Node.Protocol)
 
 	log.Println("node started", n.Host.ID())
 	log.Println("Addresses", n.MultiAddrs())
@@ -79,11 +78,6 @@ func initialize(c *cli.Context) error {
 	go n.StartDiscovery()
 
 	log.Println("protocols", n.Host.Mux().Protocols())
-
-	rpcservice := p2p.NewRPC(n.Host, protocol.ID(nodeconfig.Node.Protocol))
-	if err = rpcservice.Setup(); err != nil {
-		return err
-	}
 
 	storage, err := storage.NewStorage(expandedDir)
 	if err != nil {
@@ -105,15 +99,11 @@ func initialize(c *cli.Context) error {
 
 		time.Sleep(time.Second * 20)
 
-		newBlockHash, err := encoding.RLPEncode(b)
-		if err != nil {
-			log.Printf("problem to encoding new block: %v\n", err)
-			return err
-		}
-
-		r, errs := rpcservice.Call("BlockHandler", "NewBlock", newBlockHash, []byte{})
-		fmt.Println(errs)
-		fmt.Println(r)
+		// newBlockHash, err := encoding.RLPEncode(b)
+		// if err != nil {
+		// 	log.Printf("problem to encoding new block: %v\n", err)
+		// 	return err
+		// }
 	}
 
 	ch := make(chan os.Signal, 1)

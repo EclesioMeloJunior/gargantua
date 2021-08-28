@@ -75,7 +75,7 @@ func (n *Node) discoveryAndAdvertise() error {
 	ticker := time.NewTicker(findPeersTimeout)
 
 	go func() {
-		log.Println("finding peers...")
+		// log.Println("finding peers...")
 		for {
 			select {
 			case <-n.ctx.Done():
@@ -91,8 +91,7 @@ func (n *Node) discoveryAndAdvertise() error {
 						continue
 					}
 
-					log.Println("found peer:", peerinfo.ID)
-
+					// log.Println("found peer:", peerinfo.ID)
 					if n.Host.Network().Connectedness(peerinfo.ID) != network.Connected {
 						err := n.Host.Connect(n.ctx, peerinfo)
 						if err != nil {
