@@ -1,6 +1,10 @@
 .PHONY: gg
 gg:
 ifneq ($(wildcard ./bin),)
+ifeq ($(OS),Windows_NT)
+	@rmdir /s /q "./bin"
+else
 	@rm -rf "./bin"	
 endif
-	@go1.17.1 build -o ./bin/gg ./cmd/cli/...
+endif
+	@go build -o ./bin/gg ./cmd/cli/...

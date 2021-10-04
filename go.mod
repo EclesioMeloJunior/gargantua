@@ -14,7 +14,6 @@ require (
 	github.com/libp2p/go-libp2p-tls v0.1.3
 	github.com/multiformats/go-multiaddr v0.3.1
 	github.com/stretchr/testify v1.7.0
-	github.com/syndtr/goleveldb v1.0.1-0.20210305035536-64b5b1c73954 // indirect
 	github.com/urfave/cli/v2 v2.3.0
 	golang.org/x/crypto v0.0.0-20210322153248-0c34fe9e7dc2
 	golang.org/x/term v0.0.0-20210503060354-a79de5458b56
