@@ -8,7 +8,7 @@
     "network": {
         "port": "9002",
         "bootnodes": [
-            "/ip4/192.168.88.3/tcp/9001/p2p/12D3KooWC5LHxBzYyiteKaQvGRVrak1NbfuRzZ9LtVJ9KYE8KTau"
+            "/ip4/192.168.88.3/tcp/9001/p2p/12D3KooWQg9QHDVYeamH48yNYJ8wZf9m3qgZCh1aLjvbS3ZeWYE6"
         ]
     }    
 }

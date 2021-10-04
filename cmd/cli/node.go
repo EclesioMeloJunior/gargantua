@@ -70,7 +70,8 @@ func initialize(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	n.SetupStreamHandlers(nodeconfig.Node.Protocol)
+
+	n.SetupArxStreamHandler(nodeconfig.Node.Protocol)
 
 	log.Println("node started", n.Host.ID())
 	log.Println("Addresses", n.MultiAddrs())

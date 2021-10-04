@@ -25,6 +25,10 @@ func stringToAddrInfo(s string) (*peer.AddrInfo, error) {
 func stringsToAddrInfo(s []string) ([]peer.AddrInfo, error) {
 	pinfos := make([]peer.AddrInfo, len(s))
 	for i, v := range s {
+		if len(s) == 0 {
+			continue
+		}
+
 		p, err := stringToAddrInfo(v)
 		if err != nil {
 			return nil, err

@@ -13,7 +13,7 @@ type (
 	Node struct {
 		Protocol string `json:"protocol"`
 		Basepath string `json:"basepath"`
-		Mode     string `json:mode`
+		Mode     string `json:"mode"`
 	}
 
 	Network struct {
